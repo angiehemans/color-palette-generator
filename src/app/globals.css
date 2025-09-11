@@ -55,12 +55,7 @@ body {
   margin-bottom: 2rem;
 }
 
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-}
+
 
 .title {
   font-size: 1.875rem;
@@ -68,6 +63,7 @@ body {
   font-family: monospace;
   color: var(--foreground);
   margin: 0;
+  /* width: 100%; */
 }
 
 .theme-toggle {
@@ -154,7 +150,7 @@ body {
 }
 
 .button {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 0.375rem;
   font-size: 0.875rem;
