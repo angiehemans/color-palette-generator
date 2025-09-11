@@ -79,6 +79,10 @@ export default function Home() {
             Add New Palette
           </button>
         </div>
+        
+        <footer className="footer">
+          Built with love by <a href="https://www.angiehemans.com" target="_blank" rel="noopener noreferrer">Angie Hemans</a>
+        </footer>
       </div>
     </div>
   );
