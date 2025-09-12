@@ -281,26 +281,28 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
     <div className="card">
       <label className="label">Choose Base Color</label>
       <div className="color-input-section">
-        <div className="color-picker-button" style={{ backgroundColor: baseColor }} onClick={() => setShowColorPicker(!showColorPicker)}>
-          {showColorPicker && (
-            <div className="color-picker-popover">
-              <HexColorPicker 
-                color={baseColor} 
-                onChange={setBaseColor}
-              />
-            </div>
-          )}
+        <div className="color-picker-input-group">
+          <div className="color-picker-button" style={{ backgroundColor: baseColor }} onClick={() => setShowColorPicker(!showColorPicker)}>
+            {showColorPicker && (
+              <div className="color-picker-popover">
+                <HexColorPicker 
+                  color={baseColor} 
+                  onChange={setBaseColor}
+                />
+              </div>
+            )}
+          </div>
+          <input
+            type="text"
+            value={formatColor(baseColor, colorFormat)}
+            onChange={(e) => {
+              const parsedColor = parseColorInput(e.target.value);
+              setBaseColor(parsedColor);
+            }}
+            className="input"
+            placeholder={colorFormat === 'hex' ? '#000000' : colorFormat === 'rgb' ? 'rgb(0, 0, 0)' : 'hsl(0, 0%, 0%)'}
+          />
         </div>
-        <input
-          type="text"
-          value={formatColor(baseColor, colorFormat)}
-          onChange={(e) => {
-            const parsedColor = parseColorInput(e.target.value);
-            setBaseColor(parsedColor);
-          }}
-          className="input"
-          placeholder={colorFormat === 'hex' ? '#000000' : colorFormat === 'rgb' ? 'rgb(0, 0, 0)' : 'hsl(0, 0%, 0%)'}
-        />
         {!isMobile && (
           <button
             onClick={handleEyeDropper}
