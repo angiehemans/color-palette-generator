@@ -173,6 +173,7 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [shadePercentages, setShadePercentages] = useState([10, 20, 30, 50, 70]);
   const [tintPercentages, setTintPercentages] = useState([15, 25, 35, 50, 65, 75, 85, 92, 96, 98]);
+  const [isMobile, setIsMobile] = useState(false);
   const palette = generatePalette(baseColor, shadePercentages, tintPercentages);
 
   const handleEyeDropper = async () => {
@@ -199,6 +200,29 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
     }
   };
 
+  const copyAsHTML = async () => {
+    const htmlSwatches = allColors.map(color => {
+      const textColor = getTextColor(color.hex);
+      const label = color.type === 'base' ? 'Base' : `${color.type === 'shade' ? '-' : '+'}${color.percent}%`;
+      
+      return `<div style="width: 100px; height: 100px; background-color: ${color.hex}; color: ${textColor}; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-family: monospace; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="margin-bottom: 4px;">${formatColor(color.hex, colorFormat)}</div>
+        <div style="font-size: 10px; opacity: 0.8;">${label}</div>
+      </div>`;
+    }).join('\n    ');
+
+    const fullHTML = `<div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 16px; background-color: #f8fafc; border-radius: 12px;">
+    ${htmlSwatches}
+  </div>`;
+
+    try {
+      await navigator.clipboard.writeText(fullHTML);
+      setShowToast(true);
+    } catch (err) {
+      console.error('Failed to copy HTML:', err);
+    }
+  };
+
   const copyIndividualColor = async (colorHex: string) => {
     try {
       await navigator.clipboard.writeText(formatColor(colorHex, colorFormat));
@@ -216,6 +240,23 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
       return () => clearTimeout(timer);
     }
   }, [showToast]);
+
+  useEffect(() => {
+    // Check if device is mobile
+    const checkMobileDevice = () => {
+      if (window.matchMedia) {
+        setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+      }
+    };
+    
+    checkMobileDevice();
+    
+    // Listen for changes in screen size
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    mediaQuery.addListener(checkMobileDevice);
+    
+    return () => mediaQuery.removeListener(checkMobileDevice);
+  }, []);
 
   // Close color picker when clicking outside
   useEffect(() => {
@@ -260,13 +301,15 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
           className="input"
           placeholder={colorFormat === 'hex' ? '#000000' : colorFormat === 'rgb' ? 'rgb(0, 0, 0)' : 'hsl(0, 0%, 0%)'}
         />
-        <button
-          onClick={handleEyeDropper}
-          className="button"
-          title="Pick color from screen"
-        >
-          <IconColorPicker size={16} />
-        </button>
+        {!isMobile && (
+          <button
+            onClick={handleEyeDropper}
+            className="button"
+            title="Pick color from screen"
+          >
+            <IconColorPicker size={16} />
+          </button>
+        )}
         <Select.Root value={colorFormat} onValueChange={(value) => setColorFormat(value as 'hex' | 'rgb' | 'hsl')}>
           <Select.Trigger className="radix-select-trigger">
             <Select.Value />
@@ -385,14 +428,24 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
           );
         })}
       </div>
-      <button
-        onClick={copyAllValues}
-        className="button"
-        title="Copy all values as array"
-      >
-        <IconCopy size={16} />
-        <span style={{ marginLeft: '0.5rem' }}>Copy All Values</span>
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button
+          onClick={copyAllValues}
+          className="button"
+          title="Copy all values as array"
+        >
+          <IconCopy size={16} />
+          <span style={{ marginLeft: '0.5rem' }}>Copy All Values</span>
+        </button>
+        <button
+          onClick={copyAsHTML}
+          className="button"
+          title="Copy as HTML with inline styles"
+        >
+          <IconCopy size={16} />
+          <span style={{ marginLeft: '0.5rem' }}>Copy as HTML</span>
+        </button>
+      </div>
       
       <div className={`toast ${showToast ? 'show' : ''}`}>
         Colors copied to clipboard!
