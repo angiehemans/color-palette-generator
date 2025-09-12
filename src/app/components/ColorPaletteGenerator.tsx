@@ -482,7 +482,7 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
           title="Copy all values as array"
         >
           <IconCopy size={16} />
-          <span style={{ marginLeft: '0.5rem' }}>Copy All Values</span>
+          <span style={{ marginLeft: '0.5rem' }}>Copy Values</span>
         </button>
         <button
           onClick={copyAsHTML}
@@ -490,7 +490,7 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
           title="Copy as HTML with inline styles"
         >
           <IconCopy size={16} />
-          <span style={{ marginLeft: '0.5rem' }}>Copy as HTML</span>
+          <span style={{ marginLeft: '0.5rem' }}>Copy HTML</span>
         </button>
       </div>
       
