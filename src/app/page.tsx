@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ColorPaletteGenerator from './components/ColorPaletteGenerator';
+import ColorSwatchCollection from './components/ColorSwatchCollection';
 import { IconPlus, IconSun, IconMoon } from '@tabler/icons-react';
 
 interface Palette {
@@ -46,6 +47,15 @@ export default function Home() {
     setPalettes([...palettes, newPalette]);
   };
 
+  const createPalettesFromSwatches = (colors: string[]) => {
+    // Clear existing palettes and create new ones from swatches
+    const newPalettes: Palette[] = colors.map((color, index) => ({
+      id: `swatch-${Date.now()}-${index}`,
+      defaultColor: color
+    }));
+    setPalettes(newPalettes);
+  };
+
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
@@ -83,6 +93,10 @@ export default function Home() {
             <IconPlus size={24} />
             Add New Palette
           </button>
+        </div>
+        
+        <div style={{ marginTop: '2rem' }}>
+          <ColorSwatchCollection onCreatePalettes={createPalettesFromSwatches} />
         </div>
         
         <footer className="footer">
