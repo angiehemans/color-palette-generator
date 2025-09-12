@@ -161,7 +161,6 @@ export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b
     if (onCreatePalettes && swatches.length > 0) {
       const colors = swatches.map(swatch => swatch.hex);
       onCreatePalettes(colors);
-      setShowToast(true);
     }
   };
 
