@@ -7,13 +7,16 @@ import { IconPlus, IconSun, IconMoon } from '@tabler/icons-react';
 interface Palette {
   id: string;
   defaultColor: string;
+  lightColor?: string;
+  darkColor?: string;
 }
 
 export default function Home() {
   const [palettes, setPalettes] = useState<Palette[]>([
-    { id: '1', defaultColor: '#3b82f6' },
-    { id: '2', defaultColor: '#6b7280' },
-    { id: '3', defaultColor: '#8b5cf6' }
+    { id: '1', defaultColor: '#6b7280' },
+    { id: '2', defaultColor: '#3b82f6' },
+    { id: '3', defaultColor: '#8b5cf6' },
+    { id: '4', defaultColor: '#fff500', darkColor: '#f79508' }
   ]);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -68,6 +71,8 @@ export default function Home() {
             <ColorPaletteGenerator 
               key={palette.id}
               defaultColor={palette.defaultColor}
+              lightColor={palette.lightColor}
+              darkColor={palette.darkColor}
             />
           ))}
           

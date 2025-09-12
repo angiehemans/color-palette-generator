@@ -157,8 +157,6 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
   flex-shrink: 0;
 }
 
@@ -265,6 +263,7 @@ body {
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
 }
 
 .color-picker-button:hover {
@@ -584,4 +583,71 @@ body {
 
 .footer a:hover {
   text-decoration: underline;
+}
+
+.advanced-section {
+  padding-bottom: 1rem;
+}
+
+.accordion-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* padding: 0.75rem 0; */
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.accordion-trigger:hover {
+  color: #3b82f6;
+}
+
+.collapsible-content {
+  overflow: hidden;
+  
+}
+
+.collapsible-content[data-state="open"] {
+  animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+.collapsible-content[data-state="closed"] {
+  animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+.advanced-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.advanced-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes slideDown {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
 }

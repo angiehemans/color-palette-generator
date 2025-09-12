@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { HexColorPicker } from 'react-colorful';
 import { IconColorPicker, IconCopy, IconChevronDown } from '@tabler/icons-react';
 import * as Select from '@radix-ui/react-select';
+import * as Collapsible from '@radix-ui/react-collapsible';
+import ColorPickerInput from './ColorPickerInput';
 
 interface ColorPaletteGeneratorProps {
   defaultColor: string;
+  lightColor?: string;
+  darkColor?: string;
 }
 
 function hexToHsl(hex: string): [number, number, number] {
@@ -137,17 +140,43 @@ function parseColorInput(input: string): string {
   return input;
 }
 
-function generatePalette(baseColor: string, shadePercentages: number[], tintPercentages: number[]) {
-  const [h, s, l] = hexToHsl(baseColor);
+function hexToRgbValues(hex: string): [number, number, number] {
+  const r = parseInt(hex.substr(1, 2), 16);
+  const g = parseInt(hex.substr(3, 2), 16);
+  const b = parseInt(hex.substr(5, 2), 16);
+  return [r, g, b];
+}
+
+function rgbValuesToHex(r: number, g: number, b: number): string {
+  const toHex = (c: number) => {
+    const hex = Math.round(Math.max(0, Math.min(255, c))).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function mixColors(color1: string, color2: string, ratio: number): string {
+  const [r1, g1, b1] = hexToRgbValues(color1);
+  const [r2, g2, b2] = hexToRgbValues(color2);
   
+  const r = r1 + (r2 - r1) * ratio;
+  const g = g1 + (g2 - g1) * ratio;
+  const b = b1 + (b2 - b1) * ratio;
+  
+  return rgbValuesToHex(r, g, b);
+}
+
+function generatePalette(baseColor: string, shadePercentages: number[], tintPercentages: number[], lightColor: string = '#ffffff', darkColor: string = '#000000') {
   const shades = shadePercentages.map(percent => {
-    const newL = Math.max(0, l - (l * percent / 100));
-    return { percent, hex: hslToHex(h, s, newL), type: 'shade' };
+    const ratio = percent / 100;
+    const hex = mixColors(baseColor, darkColor, ratio);
+    return { percent, hex, type: 'shade' };
   });
 
   const tints = tintPercentages.map(percent => {
-    const newL = Math.min(100, l + ((100 - l) * percent / 100));
-    return { percent, hex: hslToHex(h, s, newL), type: 'tint' };
+    const ratio = percent / 100;
+    const hex = mixColors(baseColor, lightColor, ratio);
+    return { percent, hex, type: 'tint' };
   });
 
   return { base: baseColor, shades, tints };
@@ -166,15 +195,17 @@ function getTextColor(hexColor: string): string {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
-export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGeneratorProps) {
+export default function ColorPaletteGenerator({ defaultColor, lightColor: initialLightColor, darkColor: initialDarkColor }: ColorPaletteGeneratorProps) {
   const [baseColor, setBaseColor] = useState(defaultColor);
   const [colorFormat, setColorFormat] = useState<'hex' | 'rgb' | 'hsl'>('hex');
   const [showToast, setShowToast] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [shadePercentages, setShadePercentages] = useState([10, 20, 30, 50, 70]);
   const [tintPercentages, setTintPercentages] = useState([15, 25, 35, 50, 65, 75, 85, 92, 96, 98]);
   const [isMobile, setIsMobile] = useState(false);
-  const palette = generatePalette(baseColor, shadePercentages, tintPercentages);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [lightColor, setLightColor] = useState(initialLightColor || '#ffffff');
+  const [darkColor, setDarkColor] = useState(initialDarkColor || '#000000');
+  const palette = generatePalette(baseColor, shadePercentages, tintPercentages, lightColor, darkColor);
 
   const handleEyeDropper = async () => {
     if ('EyeDropper' in window) {
@@ -258,17 +289,6 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
     return () => mediaQuery.removeListener(checkMobileDevice);
   }, []);
 
-  // Close color picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showColorPicker && !(event.target as Element).closest('.color-picker-button')) {
-        setShowColorPicker(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showColorPicker]);
   
   // Get all hex values sorted from dark to light
   const allColors = [
@@ -281,28 +301,11 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
     <div className="card">
       <label className="label">Choose Base Color</label>
       <div className="color-input-section">
-        <div className="color-picker-input-group">
-          <div className="color-picker-button" style={{ backgroundColor: baseColor }} onClick={() => setShowColorPicker(!showColorPicker)}>
-            {showColorPicker && (
-              <div className="color-picker-popover">
-                <HexColorPicker 
-                  color={baseColor} 
-                  onChange={setBaseColor}
-                />
-              </div>
-            )}
-          </div>
-          <input
-            type="text"
-            value={formatColor(baseColor, colorFormat)}
-            onChange={(e) => {
-              const parsedColor = parseColorInput(e.target.value);
-              setBaseColor(parsedColor);
-            }}
-            className="input"
-            placeholder={colorFormat === 'hex' ? '#000000' : colorFormat === 'rgb' ? 'rgb(0, 0, 0)' : 'hsl(0, 0%, 0%)'}
-          />
-        </div>
+        <ColorPickerInput
+          color={baseColor}
+          onChange={setBaseColor}
+          colorFormat={colorFormat}
+        />
         {!isMobile && (
           <button
             onClick={handleEyeDropper}
@@ -335,6 +338,48 @@ export default function ColorPaletteGenerator({ defaultColor }: ColorPaletteGene
             </Select.Content>
           </Select.Portal>
         </Select.Root>
+      </div>
+      
+      <div className="advanced-section">
+        <Collapsible.Root open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <Collapsible.Trigger asChild>
+            <button
+              className="accordion-trigger"
+              title="Toggle advanced options"
+            >
+              <span>Advanced</span>
+              <IconChevronDown 
+                size={16} 
+                style={{ 
+                  transform: showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease'
+                }} 
+              />
+            </button>
+          </Collapsible.Trigger>
+          
+          <Collapsible.Content className="collapsible-content">
+            <div className="advanced-controls">
+              <div className="advanced-control-group">
+                <label className="label">Light Mix Color</label>
+                <ColorPickerInput
+                  color={lightColor}
+                  onChange={setLightColor}
+                  colorFormat={colorFormat}
+                />
+              </div>
+              
+              <div className="advanced-control-group">
+                <label className="label">Dark Mix Color</label>
+                <ColorPickerInput
+                  color={darkColor}
+                  onChange={setDarkColor}
+                  colorFormat={colorFormat}
+                />
+              </div>
+            </div>
+          </Collapsible.Content>
+        </Collapsible.Root>
       </div>
       <div className="space-y-2">
         {allColors.map((color, index) => {
