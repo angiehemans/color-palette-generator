@@ -150,7 +150,7 @@ export default function ColorPickerInput({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showColorPicker && !(event.target as Element).closest('.color-picker-button')) {
+      if (showColorPicker && !(event.target as Element).closest('.color-picker-button') && !(event.target as Element).closest('.color-picker-popover')) {
         setShowColorPicker(false);
       }
     };
@@ -164,7 +164,7 @@ export default function ColorPickerInput({
       <div 
         className="color-picker-button" 
         style={{ backgroundColor: color }} 
-        onClick={() => setShowColorPicker(!showColorPicker)}
+        onClick={() => setShowColorPicker(true)}
       >
         {showColorPicker && (
           <div className="color-picker-popover">
