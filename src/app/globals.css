@@ -884,7 +884,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 0.5rem;
+  height: 0.75rem;
   opacity: 0;
   transition: opacity 0.2s ease;
   margin: 0.125rem 0;
@@ -894,6 +894,7 @@ body {
   opacity: 1;
   z-index: 100;
 }
+
 
 .add-between-button {
   background: #3b82f6;
@@ -915,6 +916,27 @@ body {
   background: #2563eb;
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+
+@media (max-width: 768px) {
+  .add-between-swatches {
+    opacity: 0.3;
+  }
+  
+  .add-between-swatches:hover {
+    opacity: 1;
+  }
+
+  .add-between-button {
+    background: transparent;
+    color: #6b7280;
+  }
+
+  .add-between-swatches:hover > .add-between-button {
+  background: #2563eb;
+  color: #ffffff;
+  }
 }
 
 .drop-indicator {
