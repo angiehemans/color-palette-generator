@@ -89,7 +89,7 @@ function hexToGrayscale(hex: string): string {
   return `#${grayHex}${grayHex}${grayHex}`;
 }
 
-export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b82f6', '#8b5cf6', '#fff500'], onCreatePalettes }: ColorSwatchCollectionProps) {
+export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b82f6', '#27AB66', '#8b5cf6', '#fff500', '#f79508', '#DC3232'], onCreatePalettes }: ColorSwatchCollectionProps) {
   const [swatches, setSwatches] = useState<ColorSwatch[]>([]);
   const [currentColor, setCurrentColor] = useState('#3b82f6');
   const [colorFormat, setColorFormat] = useState<'hex' | 'rgb' | 'hsl'>('hex');
