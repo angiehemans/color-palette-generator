@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IconColorPicker, IconCopy, IconChevronDown } from '@tabler/icons-react';
+import { IconColorPicker, IconCopy, IconChevronDown, IconPlus, IconTrash, IconGripVertical } from '@tabler/icons-react';
 import * as Select from '@radix-ui/react-select';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import ColorPickerInput from './ColorPickerInput';
@@ -195,17 +195,74 @@ function getTextColor(hexColor: string): string {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
+interface ColorSwatch {
+  id: string;
+  hex: string;
+  percent: number;
+  type: 'shade' | 'base' | 'tint';
+  isBase?: boolean;
+}
+
 export default function ColorPaletteGenerator({ defaultColor, lightColor: initialLightColor, darkColor: initialDarkColor }: ColorPaletteGeneratorProps) {
   const [baseColor, setBaseColor] = useState(defaultColor);
   const [colorFormat, setColorFormat] = useState<'hex' | 'rgb' | 'hsl'>('hex');
   const [showToast, setShowToast] = useState(false);
-  const [shadePercentages, setShadePercentages] = useState([10, 20, 30, 50, 70]);
-  const [tintPercentages, setTintPercentages] = useState([15, 25, 35, 50, 65, 75, 85, 92, 96, 98]);
   const [isMobile, setIsMobile] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [lightColor, setLightColor] = useState(initialLightColor || '#ffffff');
   const [darkColor, setDarkColor] = useState(initialDarkColor || '#000000');
-  const palette = generatePalette(baseColor, shadePercentages, tintPercentages, lightColor, darkColor);
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ position: 'before' | 'after', index: number } | null>(null);
+  
+  // Initialize colors array ordered dark to light
+  const [colors, setColors] = useState<ColorSwatch[]>(() => {
+    const shadePercentages = [70, 50, 30, 20, 10]; // Reverse order: darkest first
+    const tintPercentages = [15, 25, 35, 50, 65, 75, 85, 92, 96, 98];
+    
+    const initialColors: ColorSwatch[] = [
+      ...shadePercentages.map((percent, index) => ({
+        id: `shade-${index}`,
+        hex: mixColors(defaultColor, initialDarkColor || '#000000', percent / 100),
+        percent,
+        type: 'shade' as const
+      })),
+      {
+        id: 'base',
+        hex: defaultColor,
+        percent: 0,
+        type: 'base' as const,
+        isBase: true
+      },
+      ...tintPercentages.map((percent, index) => ({
+        id: `tint-${index}`,
+        hex: mixColors(defaultColor, initialLightColor || '#ffffff', percent / 100),
+        percent,
+        type: 'tint' as const
+      }))
+    ];
+    
+    return initialColors;
+  });
+
+  // Update colors when base color or mix colors change
+  useEffect(() => {
+    const baseIndex = colors.findIndex(c => c.isBase);
+    if (baseIndex === -1) return;
+
+    const updatedColors = colors.map((color, index) => {
+      if (color.isBase) {
+        return { ...color, hex: baseColor };
+      }
+      
+      const isShade = index < baseIndex;
+      const mixColor = isShade ? darkColor : lightColor;
+      const newHex = mixColors(baseColor, mixColor, color.percent / 100);
+      
+      return { ...color, hex: newHex };
+    });
+    
+    setColors(updatedColors);
+  }, [baseColor, lightColor, darkColor]);
 
   const handleEyeDropper = async () => {
     if ('EyeDropper' in window) {
@@ -221,8 +278,130 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
     }
   };
 
+  const addColorSwatch = (afterIndex: number) => {
+    const baseIndex = colors.findIndex(c => c.isBase);
+    // Use the percentage from the swatch we're adding after, or default to 25%
+    const newPercent = colors[afterIndex].percent || 25;
+    const isShade = afterIndex < baseIndex;
+    const mixColor = isShade ? darkColor : lightColor;
+    const newHex = mixColors(baseColor, mixColor, newPercent / 100);
+    
+    const newSwatch: ColorSwatch = {
+      id: `${isShade ? 'shade' : 'tint'}-${Date.now()}`,
+      hex: newHex,
+      percent: newPercent,
+      type: isShade ? 'shade' : 'tint'
+    };
+
+    const newColors = [...colors];
+    newColors.splice(afterIndex + 1, 0, newSwatch);
+    setColors(newColors);
+  };
+
+  const deleteColorSwatch = (index: number) => {
+    if (colors[index].isBase) return; // Don't delete base color
+    
+    const newColors = colors.filter((_, i) => i !== index);
+    setColors(newColors);
+  };
+
+  const updateSwatchPercent = (index: number, newPercent: number) => {
+    const baseIndex = colors.findIndex(c => c.isBase);
+    const isShade = index < baseIndex;
+    const mixColor = isShade ? darkColor : lightColor;
+    const newHex = mixColors(baseColor, mixColor, newPercent / 100);
+    
+    const updatedColors = [...colors];
+    updatedColors[index] = {
+      ...updatedColors[index],
+      percent: newPercent,
+      hex: newHex,
+      type: isShade ? 'shade' : 'tint'
+    };
+    setColors(updatedColors);
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (colors[index].isBase) return; // Don't allow dragging base color
+    setDraggedItem(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedItem === null || colors[index].isBase) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const mouseY = e.clientY;
+    
+    // Determine if we're in the top or bottom half of the element
+    const position = mouseY < midY ? 'before' : 'after';
+    
+    // Don't show indicator if dropping in the same position
+    if (draggedItem === index || 
+        (draggedItem === index - 1 && position === 'after') ||
+        (draggedItem === index + 1 && position === 'before')) {
+      setDropIndicator(null);
+      return;
+    }
+    
+    setDropIndicator({ position, index });
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear indicator if we're leaving the entire drag area
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDropIndicator(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedItem === null || colors[dropIndex].isBase) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const mouseY = e.clientY;
+    const position = mouseY < midY ? 'before' : 'after';
+    
+    let finalDropIndex = dropIndex;
+    if (position === 'after') {
+      finalDropIndex = dropIndex + 1;
+    }
+    
+    // Adjust for the removal of the dragged item
+    if (draggedItem < finalDropIndex) {
+      finalDropIndex--;
+    }
+    
+    const baseIndex = colors.findIndex(c => c.isBase);
+    const newColors = [...colors];
+    const [draggedColor] = newColors.splice(draggedItem, 1);
+    
+    // Update the color's type and hex based on new position
+    const adjustedBaseIndex = draggedItem < baseIndex ? baseIndex - 1 : baseIndex;
+    const isShade = finalDropIndex < adjustedBaseIndex;
+    const mixColor = isShade ? darkColor : lightColor;
+    const updatedColor: ColorSwatch = {
+      ...draggedColor,
+      hex: mixColors(baseColor, mixColor, draggedColor.percent / 100),
+      type: isShade ? 'shade' : 'tint'
+    };
+    
+    newColors.splice(finalDropIndex, 0, updatedColor);
+    setColors(newColors);
+    setDraggedItem(null);
+    setDropIndicator(null);
+  };
+
   const copyAllValues = async () => {
-    const colorArray = allColors.map(color => formatColor(color.hex, colorFormat));
+    const colorArray = colors.map(color => formatColor(color.hex, colorFormat));
     try {
       await navigator.clipboard.writeText(JSON.stringify(colorArray, null, 2));
       setShowToast(true);
@@ -232,7 +411,7 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
   };
 
   const copyAsHTML = async () => {
-    const htmlSwatches = allColors.map(color => {
+    const htmlSwatches = colors.map(color => {
       const textColor = getTextColor(color.hex);
       const label = color.type === 'base' ? 'Base' : `${color.type === 'shade' ? '-' : '+'}${color.percent}%`;
       
@@ -289,13 +468,6 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
     return () => mediaQuery.removeListener(checkMobileDevice);
   }, []);
 
-  
-  // Get all hex values sorted from dark to light
-  const allColors = [
-    ...palette.shades.reverse().map(shade => ({ ...shade, label: `-${shade.percent}%` })), // darkest first
-    { hex: palette.base, type: 'base', label: 'Base Color', percent: undefined },
-    ...palette.tints.map(tint => ({ ...tint, label: `+${tint.percent}%` })) // lightest last
-  ];
 
   return (
     <div className="card">
@@ -382,25 +554,19 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
         </Collapsible.Root>
       </div>
       <div className="space-y-2">
-        {allColors.map((color, index) => {
-          const isShade = color.type === 'shade';
-          const isTint = color.type === 'tint';
-          const isBase = color.type === 'base';
-          
-          // Calculate the actual array index for shades and tints
-          const getArrayIndex = () => {
-            if (isShade) {
-              // Shades are reversed, so we need to account for that
-              return palette.shades.length - 1 - (index);
-            } else if (isTint) {
-              // Tints start after shades + base color
-              return index - palette.shades.length - 1;
-            }
-            return -1;
-          };
-          
-          return (
-            <div key={index} className="color-list-item">
+        {colors.map((color, index) => (
+          <div key={color.id}>
+            {/* Drop indicator before */}
+            {dropIndicator && dropIndicator.index === index && dropIndicator.position === 'before' && (
+              <div className="drop-indicator" />
+            )}
+            
+            <div 
+              className={`color-list-item ${draggedItem === index ? 'dragging' : ''}`}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+            >
               <div
                 className="color-list-swatch"
                 style={{ 
@@ -408,72 +574,100 @@ export default function ColorPaletteGenerator({ defaultColor, lightColor: initia
                   color: getTextColor(color.hex)
                 }}
               >
-                <div className="color-swatch-text">{formatColor(color.hex, colorFormat)}</div>
-                <div className="color-swatch-controls">
-                  {!isBase && (
-                    <>
-                      <input
-                        type="number"
-                        value={color.percent || 0}
-                        onChange={(e) => {
-                          const newPercent = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
-                          const arrayIndex = getArrayIndex();
-                          
-                          if (isShade && arrayIndex !== -1) {
-                            const newShades = [...shadePercentages];
-                            newShades[arrayIndex] = newPercent;
-                            setShadePercentages(newShades);
-                          } else if (isTint && arrayIndex !== -1) {
-                            const newTints = [...tintPercentages];
-                            newTints[arrayIndex] = newPercent;
-                            setTintPercentages(newTints);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            const increment = e.shiftKey ? 10 : 1;
-                            const currentValue = color.percent || 0;
-                            const newPercent = e.key === 'ArrowUp' 
-                              ? Math.min(100, currentValue + increment)
-                              : Math.max(0, currentValue - increment);
-                            
-                            const arrayIndex = getArrayIndex();
-                            
-                            if (isShade && arrayIndex !== -1) {
-                              const newShades = [...shadePercentages];
-                              newShades[arrayIndex] = newPercent;
-                              setShadePercentages(newShades);
-                            } else if (isTint && arrayIndex !== -1) {
-                              const newTints = [...tintPercentages];
-                              newTints[arrayIndex] = newPercent;
-                              setTintPercentages(newTints);
-                            }
-                          }
-                        }}
-                        className="percentage-input"
-                        style={{ color: getTextColor(color.hex) }}
-                        min="0"
-                        max="100"
-                        step="1"
-                      />
-                      <span className="percentage-sign" style={{ color: getTextColor(color.hex) }}>%</span>
-                    </>
+                {/* Top section: action buttons */}
+                <div className="swatch-top-section">
+                  {!color.isBase && (
+                    <div 
+                      className="drag-handle" 
+                      title="Drag to reorder"
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                    >
+                      <IconGripVertical size={14} style={{ color: getTextColor(color.hex) }} />
+                    </div>
                   )}
-                  {isBase && <div className="color-swatch-label">{color.label}</div>}
+                  
+                  <div className="top-actions">
+                    {!color.isBase && (
+                      <button
+                        className="delete-color-button"
+                        onClick={() => deleteColorSwatch(index)}
+                        title="Delete this color"
+                        style={{ color: getTextColor(color.hex) }}
+                      >
+                        <IconTrash size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button
-                  className="color-swatch-copy"
-                  onClick={() => copyIndividualColor(color.hex)}
-                  title="Copy color value"
-                  style={{ color: getTextColor(color.hex) }}
-                >
-                  <IconCopy size={12} />
-                </button>
+
+                {/* Bottom section: color info */}
+                <div className="swatch-bottom-section">
+                  <div className="color-value-section">
+                    <div className="color-swatch-text">{formatColor(color.hex, colorFormat)}</div>
+                    <button
+                      className="color-swatch-copy"
+                      onClick={() => copyIndividualColor(color.hex)}
+                      title="Copy color value"
+                      style={{ color: getTextColor(color.hex) }}
+                    >
+                      <IconCopy size={12} />
+                    </button>
+                  </div>
+                  
+                  <div className="color-info-section">
+                    {!color.isBase ? (
+                      <div className="percentage-section">
+                        <input
+                          type="number"
+                          value={color.percent}
+                          onChange={(e) => {
+                            const newPercent = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                            updateSwatchPercent(index, newPercent);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              const increment = e.shiftKey ? 10 : 1;
+                              const newPercent = e.key === 'ArrowUp' 
+                                ? Math.min(100, color.percent + increment)
+                                : Math.max(0, color.percent - increment);
+                              updateSwatchPercent(index, newPercent);
+                            }
+                          }}
+                          className="percentage-input"
+                          style={{ color: getTextColor(color.hex) }}
+                          min="0"
+                          max="100"
+                          step="1"
+                        />
+                        <span className="percentage-sign" style={{ color: getTextColor(color.hex) }}>%</span>
+                      </div>
+                    ) : (
+                      <div className="color-swatch-label">Base Color</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          );
-        })}
+            
+            {/* Drop indicator after */}
+            {dropIndicator && dropIndicator.index === index && dropIndicator.position === 'after' && (
+              <div className="drop-indicator" />
+            )}
+            
+            {/* Add button between swatches */}
+            <div className="add-between-swatches">
+              <button
+                className="add-between-button"
+                onClick={() => addColorSwatch(index)}
+                title="Add color after this one"
+              >
+                <IconPlus size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
