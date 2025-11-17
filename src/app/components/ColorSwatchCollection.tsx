@@ -130,7 +130,7 @@ export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b
   const copyAsHTML = async () => {
     const htmlSwatches = swatches.map(swatch => {
       const textColor = getTextColor(swatch.hex);
-      
+
       return `<div style="width: 100px; height: 100px; background-color: ${swatch.hex}; color: ${textColor}; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-family: monospace; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         ${formatColor(swatch.hex, colorFormat)}
       </div>`;
@@ -145,6 +145,54 @@ export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b
       setShowToast(true);
     } catch (err) {
       console.error('Failed to copy HTML:', err);
+    }
+  };
+
+  const copyAsSVG = async () => {
+    const swatchWidth = 80;
+    const swatchHeight = 80;
+    const gap = 12;
+    const padding = 16;
+    const textOffsetY = 20;
+
+    const cols = Math.ceil(Math.sqrt(swatches.length));
+    const rows = Math.ceil(swatches.length / cols);
+
+    const totalWidth = cols * swatchWidth + (cols - 1) * gap + padding * 2;
+    const totalHeight = rows * swatchHeight + (rows - 1) * gap + padding * 2;
+
+    const svgSwatches = swatches.map((swatch, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = padding + col * (swatchWidth + gap);
+      const y = padding + row * (swatchHeight + gap);
+      const textColor = getTextColor(swatch.hex);
+
+      return `  <g>
+    <rect x="${x}" y="${y}" width="${swatchWidth}" height="${swatchHeight}" fill="${swatch.hex}" rx="6"/>
+    <text x="${x + swatchWidth/2}" y="${y + swatchHeight/2 - textOffsetY/2}"
+          font-family="monospace" font-size="10" font-weight="600"
+          fill="${textColor}" text-anchor="middle" dominant-baseline="middle">
+      ${formatColor(swatch.hex, colorFormat)}
+    </text>
+    <text x="${x + swatchWidth/2}" y="${y + swatchHeight/2 + textOffsetY/2}"
+          font-family="monospace" font-size="8"
+          fill="${textColor}" text-anchor="middle" dominant-baseline="middle" opacity="0.8">
+      Color ${index + 1}
+    </text>
+  </g>`;
+    }).join('\n');
+
+    const fullSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
+  <rect width="100%" height="100%" fill="#f8fafc" rx="8"/>
+${svgSwatches}
+</svg>`;
+
+    try {
+      await navigator.clipboard.writeText(fullSVG);
+      setShowToast(true);
+    } catch (err) {
+      console.error('Failed to copy SVG:', err);
     }
   };
 
@@ -297,6 +345,14 @@ export default function ColorSwatchCollection({ defaultColors = ['#6b7280', '#3b
         >
           <IconCopy size={16} />
           <span style={{ marginLeft: '0.5rem' }}>Copy HTML</span>
+        </button>
+        <button
+          onClick={copyAsSVG}
+          className="button"
+          title="Copy as SVG (paste into Figma)"
+        >
+          <IconCopy size={16} />
+          <span style={{ marginLeft: '0.5rem' }}>Copy SVG</span>
         </button>
       </div>
       
